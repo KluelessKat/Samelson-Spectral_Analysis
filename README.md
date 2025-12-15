@@ -29,7 +29,9 @@ venv\Scripts\activate
 ```
 
 ### 3️⃣ Install dependencies
+```bash
 pip install -r requirements.txt
+```
 
 🚀 Step-by-Step Usage
 Step 1 — Process Raw ClarioStar Spectral CSVs
