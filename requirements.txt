@@ -1,0 +1,21 @@
+# Core numerical and data libraries
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Plotting and visualization
+matplotlib>=3.7.0
+
+# Machine learning and dimensionality reduction
+scikit-learn>=1.3.0
+umap-learn>=0.5.5
+
+# Excel I/O
+openpyxl>=3.1.2
+
+# Optional utilities
+seaborn>=0.12.2   # (optional, for nicer plots if used in preprocessing)
+scipy>=1.11.0     # used internally by UMAP and PCA
+tqdm>=4.65.0      # optional progress bars (if you later add them)
+
+# System and file utilities
+fnmatch
