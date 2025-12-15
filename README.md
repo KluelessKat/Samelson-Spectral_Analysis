@@ -33,8 +33,8 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-🚀 Step-by-Step Usage
-Step 1 — Process Raw ClarioStar Spectral CSVs
+## 🚀 Step-by-Step Usage
+### Step 1 — Process Raw ClarioStar Spectral CSVs
 
 Script: spectral_processing_clarioStar.py
 
@@ -47,7 +47,7 @@ python spectral_processing_clarioStar.py
 Output:
 Cleaned run-level CSV files (e.g., Spillover_LSM_A_processed.csv)
 
-Step 2 — Preprocess and Normalize Spectra
+### Step 2 — Preprocess and Normalize Spectra
 
 Script: spectral_preprocessing.py
 
@@ -68,7 +68,7 @@ Per-dye Excel sheets with spectra (*_sawtooths_by_dye.xlsx)
 
 PNG sawtooth plots in a _sawtooth_plots directory
 
-Step 3 — Combine Multiple CSVs or Folders
+### Step 3 — Combine Multiple CSVs or Folders
 
 Script: spectral_combine_csv.py
 
@@ -92,7 +92,7 @@ If a path contains spaces, wrap it in quotes.
 Output:
 combined_samples.csv containing all [amyloid-dye] rows with SourceFile and SourceFolder metadata.
 
-Step 4 — Perform PCA, UMAP, and QDA Analysis
+### Step 4 — Perform PCA, UMAP, and QDA Analysis
 
 Script: spectral_analysis.py
 
@@ -127,7 +127,7 @@ PCA-QDA discrimination score: 0.872
   asyn: 0.910
   tau: 0.845
 
-🧠 Notes and Best Practices
+## 🧠 Notes and Best Practices
 
 Sample names must follow the [Amyloid-Dye] pattern (e.g. [asyn-bf188]), with no underscores.
 
