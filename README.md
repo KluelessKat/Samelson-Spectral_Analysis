@@ -10,19 +10,23 @@ The workflow transforms raw instrument CSV outputs into analyzed visualizations 
 ### 1️⃣ Clone the repository
 
 ```bash
-git clone https://github.com/<your-username>/Spectral_Data_Processing.git
+git clone https://github.com/KluelessKat/Samelson-Spectral_Analysis.git
 cd Spectral_Data_Processing
 ```
 
 ### 2️⃣ Set up a virtual environment (recommended)
 
 macOS/Linux
+```bash
 python3 -m venv venv
 source venv/bin/activate
+```
 
 Windows
+```bash
 python -m venv venv
 venv\Scripts\activate
+```
 
 ### 3️⃣ Install dependencies
 pip install -r requirements.txt
@@ -34,8 +38,9 @@ Script: spectral_processing_clarioStar.py
 
 Processes raw plate-reader CSVs from the ClarioStar and extracts emission–excitation spectral data.
 
+```bash
 python spectral_processing_clarioStar.py
-
+```
 
 Output:
 Cleaned run-level CSV files (e.g., Spillover_LSM_A_processed.csv)
@@ -47,8 +52,9 @@ Script: spectral_preprocessing.py
 Cleans, reshapes, and normalizes the processed spectra into a tidy format suitable for statistical analysis.
 Generates per-dye “sawtooth” plots for visual inspection.
 
+```bash
 python spectral_preprocessing.py
-
+```
 
 Output files:
 
@@ -68,10 +74,14 @@ Merges data from multiple runs or folders into a single combined dataset.
 Automatically detects sample rows formatted as [Amyloid-Dye].
 
 Example 1: Use default paths (defined in script)
+```bash
 python spectral_combine_csv.py
+```
 
 Example 2: Specify folders or CSVs from terminal
+```bash
 python spectral_combine_csv.py /path/to/run1 /path/to/run2 /path/to/file3.csv
+```
 
 
 Each path should be separated by a space.
@@ -100,8 +110,9 @@ AmyloidBase → base amyloid group (e.g., “asyn”)
 RunNumber → replicate index (e.g., “1”, “2”)
 
 Example
+```bash
 python spectral_analysis.py combined_samples_tidy.xlsx
-
+```
 
 Output:
 
