@@ -12,6 +12,7 @@ The workflow transforms raw instrument CSV outputs into analyzed visualizations 
 ```bash
 git clone https://github.com/<your-username>/Spectral_Data_Processing.git
 cd Spectral_Data_Processing
+```
 
 ### 2️⃣ Set up a virtual environment (recommended)
 
