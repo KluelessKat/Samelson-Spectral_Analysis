@@ -9,6 +9,14 @@ Output:
       Detector_CH, Emission_nm_start, Intensity, OrderInBlock
   - per-dye sawtooth PNGs:
       one figure per dye, rows = amyloids, cols = excitations
+
+        Sawtooth plot directory format example:
+        combined_samples_sawtooth_plots_20251222_143501/
+        ├── uncollapsed_raw/
+        ├── uncollapsed_norm/
+        ├── collapsed_raw/
+        ├── collapsed_globalnorm_stacked/
+        └── collapsed_staggered_norm/
 """
 
 
@@ -18,6 +26,7 @@ import xlsxwriter
 from glob import glob
 import fnmatch
 import sys
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -111,6 +120,28 @@ def safe_name(text: str) -> str:
     s = "".join(ch for ch in str(text) if ch not in bad)
     s = s.replace(" ", "_")
     return s
+
+def make_plot_dirs(base: str):
+    """
+    Create a timestamped plot root folder plus subfolders for each plot type.
+    Returns a dict of {key: folder_path}.
+    """
+    #ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = ""
+    root = f"{base}_sawtooth_plots_{ts}"
+
+    subdirs = {
+        "uncollapsed_raw": os.path.join(root, "uncollapsed_raw"),
+        "uncollapsed_norm": os.path.join(root, "uncollapsed_norm"),
+        "collapsed_raw": os.path.join(root, "collapsed_raw"),
+        "collapsed_globalnorm": os.path.join(root, "collapsed_globalnorm_stacked"),
+        "collapsed_staggered": os.path.join(root, "collapsed_staggered_norm"),
+    }
+
+    for p in subdirs.values():
+        os.makedirs(p, exist_ok=True)
+
+    return root, subdirs
 
 def build_tidy_from_combined_csv(csv_path: str) -> pd.DataFrame:
     """
@@ -230,12 +261,22 @@ def plot_sawtooths_per_dye(tidy: pd.DataFrame, dye_name: str, outdir: str,
         return
 
     amyloids = sorted(sub["Amyloid"].unique())
+
+    # Use only excitations that actually exist for this dye (safer than fixed EXCITATIONS)
+    excitations_here = [ex for ex in EXCITATIONS if ex in set(sub["Excitation_nm"].dropna().unique())]
+    if not excitations_here:
+        print(f"No excitations found for dye {dye_name}")
+        return
+    
     n_rows = len(amyloids)
-    n_cols = len(EXCITATIONS)
+    n_cols = len(excitations_here)
+
+    cmap = cm.get_cmap("viridis", len(excitations_here))
+    ex_to_color = {ex: cmap(i) for i, ex in enumerate(excitations_here)}
 
     fig, axes = plt.subplots(
         n_rows, n_cols,
-        figsize=(3 * n_cols, 3 * n_rows),
+        figsize=(3.2 * n_cols, 3.0 * n_rows),
         sharex=True, sharey=True
     )
 
@@ -244,7 +285,7 @@ def plot_sawtooths_per_dye(tidy: pd.DataFrame, dye_name: str, outdir: str,
 
     for i, amy in enumerate(amyloids):
         sub_amy = sub[sub["Amyloid"] == amy]
-        for j, ex in enumerate(EXCITATIONS):
+        for j, ex in enumerate(excitations_here):
             ax = axes[i, j]
             seg = sub_amy[sub_amy["Excitation_nm"] == ex].copy()
             seg = seg.sort_values("Emission_nm_start")
@@ -253,11 +294,12 @@ def plot_sawtooths_per_dye(tidy: pd.DataFrame, dye_name: str, outdir: str,
                 ax.set_visible(False)
                 continue
 
+            x = seg["Emission_nm_start"].to_numpy(dtype=float)
             y = seg["Intensity"].to_numpy(dtype=float)
             if normalize and y.max() > 0:
                 y = y / y.max()
 
-            ax.plot(seg["Emission_nm_start"], y, linewidth=2)
+            ax.plot(x, y, marker="o", linewidth=2, color=ex_to_color[ex],)
 
             if i == 0:
                 ax.set_title(f"{ex} nm")
@@ -269,14 +311,15 @@ def plot_sawtooths_per_dye(tidy: pd.DataFrame, dye_name: str, outdir: str,
             else:
                 ax.tick_params(axis="y", left=False, labelleft=False)
 
-    title = f"Current Sawtooths – {dye_name}"
+    title = f"Uncollapsed Sawtooths – {dye_name}"
     if normalize:
-        title += " (normalized)"
-    fig.suptitle(title, fontsize=16, y=0.98)
+        title += " (Normalized)"
+    fig.suptitle(title, fontsize=16, y=0.995)
     plt.tight_layout(rect=[0, 0, 1, 0.95])
 
+    #Save Plots
     os.makedirs(outdir, exist_ok=True)
-    fname = f"sawtooths_{dye_name}{'_norm' if normalize else ''}.png"
+    fname = f"uncollapsed_sawtooths_{dye_name}{'_norm' if normalize else ''}.png"
     save_path = os.path.join(outdir, fname)
     plt.savefig(save_path, dpi=300)
     plt.close(fig)
@@ -628,19 +671,20 @@ def main():
     # export_sawtooths_by_dye_excel(tidy, excel_saw_path)
     export_sawtooths_by_dye_excel(tidy_norm, excel_saw_path_norm)
 
-    outdir = base + "_sawtooth_plots"
     dyes = sorted(tidy["Dye"].dropna().unique())
 
+    plot_root, plot_dirs = make_plot_dirs(base)
+    print(f"📁 Writing plots to: {plot_root}")
+
     for dye in dyes:
-        # Linearized grid-style sawtooths
-        plot_sawtooths_per_dye(tidy, dye, outdir, normalize=False)
-        plot_sawtooths_per_dye(tidy, dye, outdir, normalize=True)
+        # Uncollapsed sawtooths (rows=amyloids, cols=excitations)
+        plot_sawtooths_per_dye(tidy, dye, plot_dirs["uncollapsed_raw"], normalize=False)
+        plot_sawtooths_per_dye(tidy, dye, plot_dirs["uncollapsed_norm"], normalize=True)
 
-        # Collapsed spectra per amyloid–dye
-        plot_collapsed_spectra_raw(tidy, dye, outdir)
-        plot_collapsed_spectra_global_norm(tidy, dye, outdir)
-        plot_collapsed_spectra_staggered_norm(tidy, dye, outdir)
-
+        # Collapsed spectra per (amyloid, dye)
+        plot_collapsed_spectra_raw(tidy, dye, plot_dirs["collapsed_raw"])
+        plot_collapsed_spectra_global_norm(tidy, dye, plot_dirs["collapsed_globalnorm"])
+        plot_collapsed_spectra_staggered_norm(tidy, dye, plot_dirs["collapsed_staggered"])
 
 
 if __name__ == "__main__":

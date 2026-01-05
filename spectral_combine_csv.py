@@ -20,6 +20,7 @@ import sys
 import re
 import pandas as pd
 import fnmatch
+from datetime import datetime
 
 # def find_csv_files(folder_dirs=[], filename_pattern="*_A.csv"):
 #     """
@@ -60,12 +61,18 @@ def is_sample_label(value: str) -> bool:
 # Path handling
 # -------------------------------------------------------------------
 
-def expand_paths_to_csvs(paths):
+def expand_paths_to_csvs(paths, filename_pattern="*.csv"):
     """
     For each input path:
-      - If it's a directory → walk it recursively and collect all *.csv
-      - If it's a file ending in .csv → include it
+      - If it's a directory → walk it recursively and collect all CSV files
+        matching filename_pattern (e.g., "*.csv")
+      - If it's a file ending in .csv → include it if it matches pattern
       - Otherwise → print a warning and skip
+
+    Args:
+        paths: List of directory or file paths to search
+        filename_pattern: Pattern to match filenames (e.g., "*combined_samples.csv")
+                          Uses fnmatch syntax. Default: "*.csv" (matches all CSVs)
 
     Returns: sorted list of unique CSV file paths.
     """
@@ -77,10 +84,12 @@ def expand_paths_to_csvs(paths):
             # walk recursively through the folder
             for dirpath, dirnames, filenames in os.walk(p):
                 for fname in filenames:
-                    if fname.lower().endswith(".csv"):
+                    if fnmatch.fnmatch(fname, filename_pattern):
                         csv_files.append(os.path.join(dirpath, fname))
         elif os.path.isfile(p) and p.lower().endswith(".csv"):
-            csv_files.append(p)
+            # Check if filename matches pattern
+            if fnmatch.fnmatch(os.path.basename(p), filename_pattern):
+                csv_files.append(p)
         else:
             print(f"⚠️ Skipping non-CSV path: {p}")
 
@@ -150,6 +159,14 @@ def main():
     # If paths are given on the command line, use them
     if len(sys.argv) > 1:
         input_paths = sys.argv[1:]
+        '''
+        sys.argv == [
+        'spectral_combine_csv.py',        # always the script name itself
+        '/path/to/folder1',
+        '/path/to/folder2',
+        '/path/to/file3.csv']
+        
+        '''
     else:
         # Otherwise, manually specify folders and/or CSV files here:
         input_paths = [
@@ -160,7 +177,11 @@ def main():
             "/Users/katherinezhang/Downloads/Spectral_Data_Processing/mTau,Tau-bf188,ThT_20251119170806/Spillover_LSM_A.csv",
         ]
 
-    csv_paths = expand_paths_to_csvs(input_paths)
+    # Optional: filter input files by pattern (e.g., "*combined_samples.csv")
+    # Leave as None or "*.csv" to process all CSV files
+    filename_pattern = "*.csv"  # Change to "*combined_samples.csv" to filter inputs
+    
+    csv_paths = expand_paths_to_csvs(input_paths, filename_pattern=filename_pattern)
 
     if not csv_paths:
         print("❌ No CSV files found. Edit input_paths in main() or pass paths via terminal.")
@@ -170,7 +191,7 @@ def main():
     for p in csv_paths:
         print("  ", p)
 
-    combine_sample_rows(csv_paths, output_csv="combined_samples.csv")
+    combine_sample_rows(csv_paths, output_csv=f"{datetime.now():%Y%m%d_%H%M%S}_combined_samples.csv")
 
 
 if __name__ == "__main__":

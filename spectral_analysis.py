@@ -20,6 +20,17 @@ Input:
 Output:
     PCA and UMAP plots per dye, with QDA-based discrimination scores.
 
+    combined_samples_tidy_analysis_plots_20251222_145210/
+    ├── PCA/
+    │   ├── PCA_bf188.png
+    │   ├── PCA_tht.png
+    │   └── ...
+    └── UMAP/
+        ├── UMAP_bf188.png
+        ├── UMAP_tht.png
+        └── ...
+
+
 """
 
 import os
@@ -30,6 +41,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from glob import glob
 from collections import defaultdict
+from datetime import datetime
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
@@ -212,6 +224,37 @@ def load_tidy_excel(path: str):
 
     return df, cols
 
+# ---------------------------------------------------------------------
+# Create PCA/UMAP Export Directories
+# ---------------------------------------------------------------------
+
+def safe_name(text: str) -> str:
+    """Make a string safe for filenames."""
+    bad = '[]:*?/\\'
+    s = "".join(ch for ch in str(text) if ch not in bad)
+    s = s.replace(" ", "_")
+    return s
+
+
+def make_analysis_plot_dirs(base: str):
+    """
+    Create a timestamped root folder for PCA/UMAP outputs, with subfolders.
+    Returns (root, dirs_dict).
+    """
+    #ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = ""
+    root = f"{base}_analysis_plots_{ts}"
+
+    dirs = {
+        "pca": os.path.join(root, "PCA"),
+        "umap": os.path.join(root, "UMAP"),
+    }
+
+    for p in dirs.values():
+        os.makedirs(p, exist_ok=True)
+
+    return root, dirs
+
 
 # ---------------------------------------------------------------------
 # Build matrix per dye
@@ -341,7 +384,8 @@ def qda_on_embedding(X_embed, labels, n_splits: int = 10, random_state: int = 0)
 # ---------------------------------------------------------------------
 
 def pca_for_dye(df: pd.DataFrame, cols: dict, dye_name: str,
-                use_normalized: bool = False, n_components: int = 2):
+                use_normalized: bool = False, n_components: int = 2,
+                outdir: str = None, show: bool = False):
     X, labels, ok = build_matrix_for_dye(df, cols, dye_name, use_normalized)
     if not ok:
         return None, None
@@ -386,7 +430,19 @@ def pca_for_dye(df: pd.DataFrame, cols: dict, dye_name: str,
     plt.title(title)
     plt.legend()
     plt.tight_layout()
-    plt.show()
+
+    # --- save plot ---
+    if outdir is not None:
+        os.makedirs(outdir, exist_ok=True)
+        fname = f"PCA_{safe_name(dye_name)}{'_norm' if use_normalized else ''}.png"
+        save_path = os.path.join(outdir, fname)
+        plt.savefig(save_path, dpi=300)
+        print("Saved PCA plot:", save_path)
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
 
     return overall_score, per_class
 
@@ -398,19 +454,36 @@ def pca_for_dye(df: pd.DataFrame, cols: dict, dye_name: str,
 def umap_for_dye(df: pd.DataFrame, cols: dict, dye_name: str,
                  use_normalized: bool = False,
                  n_neighbors: int = 15, min_dist: float = 0.1,
-                 metric: str = "euclidean", random_state: int = 42):
+                 metric: str = "euclidean", random_state: int = 42,
+                 outdir: str = None, show: bool = False):
+    
     X, labels, ok = build_matrix_for_dye(df, cols, dye_name, use_normalized)
     if not ok:
         return None, None
 
     X_scaled = StandardScaler().fit_transform(X)
 
+    n_samples = X_scaled.shape[0]
+
+    # Make params safe for small datasets
+    n_neighbors_eff = max(2, min(n_neighbors, n_samples - 1))  # must be < n_samples
+    init_method = "spectral"
+    if n_samples < 10:
+        init_method = "random"  # avoids spectral eigendecomp issues on tiny N
+
     reducer = umap.UMAP(
-        n_neighbors=n_neighbors,
+        n_neighbors=n_neighbors_eff,
         min_dist=min_dist,
         metric=metric,
         random_state=random_state,
+        init=init_method,
     )
+
+    if n_samples < 3:
+        print(f"[{dye_name}] Not enough samples for UMAP (n={n_samples}). Skipping.")
+        return None, None
+
+
     X_umap = reducer.fit_transform(X_scaled)
 
     overall_score, per_class = qda_on_embedding(X_umap, labels)
@@ -447,7 +520,19 @@ def umap_for_dye(df: pd.DataFrame, cols: dict, dye_name: str,
     plt.title(title)
     plt.legend()
     plt.tight_layout()
-    plt.show()
+
+    # --- save plot ---
+    if outdir is not None:
+        os.makedirs(outdir, exist_ok=True)
+        fname = f"UMAP_{safe_name(dye_name)}{'_norm' if use_normalized else ''}.png"
+        save_path = os.path.join(outdir, fname)
+        plt.savefig(save_path, dpi=300)
+        print("Saved UMAP plot:", save_path)
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
 
     return overall_score, per_class
 
@@ -455,7 +540,11 @@ def umap_for_dye(df: pd.DataFrame, cols: dict, dye_name: str,
 # Run analysis for all dyes
 # ---------------------------------------------------------------------
 
-def run_all_dyes(tidy_path, use_normalized=False):
+def run_all_dyes(tidy_path, use_normalized=False, show_plots = False):
+    base, _ = os.path.splitext(tidy_path)
+    plot_root, plot_dirs = make_analysis_plot_dirs(base)
+    print(f"📁 Writing PCA/UMAP plots to: {plot_root}")
+    
     df_all, cols = load_tidy_excel(tidy_path)
 
     dye_col = cols["dye"]   # actual column name for dye in the dataframe
@@ -466,12 +555,27 @@ def run_all_dyes(tidy_path, use_normalized=False):
 
     for dye in sorted(dyes):
         print(f"\n=== {dye} ===")
-        pca_overall, _ = pca_for_dye(df_all, cols, dye, use_normalized=use_normalized)
-        umap_overall, _ = umap_for_dye(df_all, cols, dye, use_normalized=use_normalized)
-        pca_scores[dye] = pca_overall
-        umap_scores[dye] = umap_overall
 
-    return df_all, pca_scores, umap_scores
+        # PCA
+        try:
+            pca_overall, _ = pca_for_dye(df_all, cols, dye, use_normalized=use_normalized, 
+                                     outdir=plot_dirs["pca"], show=show_plots)
+            pca_scores[dye] = pca_overall
+        except Exception as e:
+            print(f"[{dye}] PCA failed with error: {e}")
+            pca_scores[dye] = None
+
+        # UMAP
+        try:
+            umap_overall, _ = umap_for_dye(df_all, cols, dye, use_normalized=use_normalized,
+                                       outdir=["umap"], show=show_plots)
+            umap_scores[dye] = umap_overall
+        except Exception as e:
+            print(f"[{dye}] UMAP failed with error: {e}")
+            umap_scores[dye] = None
+            continue  # keep going to next dye
+
+    return df_all, pca_scores, umap_scores, plot_root
 
 def main():
     if len(sys.argv) > 1:
@@ -486,7 +590,7 @@ def main():
     # Use normalized intensity if present?
     use_normalized = False  # set True if you want to use Intensity_norm
 
-    run_all_dyes(tidy_path, use_normalized=use_normalized)
+    run_all_dyes(tidy_path, use_normalized=use_normalized, show_plots=False)
 
 
 if __name__ == "__main__":
