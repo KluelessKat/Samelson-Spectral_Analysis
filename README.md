@@ -133,7 +133,7 @@ Script converts exported tables from FloJo11 to:
 
 The script is designed to be used **before** any downstream embedding / PCA / UMAP / classification steps.
 
-## 1) What the script expects as input
+### 1) What the script expects as input
 
 ### Supported input format
 You provide one or more CSVs exported from your Cytek Aurora workflow where:
@@ -170,33 +170,7 @@ If your sample names do **not** follow this convention, use the **sample map** w
 
 ---
 
-## 2) Installation / dependencies
-
-### Recommended setup (virtual environment)
-
-```bash
-python -m venv .venv
-# macOS/Linux
-source .venv/bin/activate
-# Windows
-.venv\Scripts\activate
-```
-
-### Install required Python packages
-
-```bash
-pip install numpy pandas matplotlib xlsxwriter openpyxl
-```
-
-**Why these packages**
-- `numpy`, `pandas`: parsing + reshaping CSVs
-- `matplotlib`: plots
-- `xlsxwriter`: writing Excel outputs
-- `openpyxl`: needed if you use an `.xlsx` sample map (pandas uses it to read Excel)
-
----
-
-## 3) Quickstart
+### 2) Quickstart
 
 ### A) Run on a folder of CSVs (plots + Excel outputs)
 
@@ -214,6 +188,28 @@ python spectral_ca_preprocessing.py \
   --outdir ./out \
   --name my_run
 ```
+OR (See Step 5) Create Sample Map for Amyloid and Dye Labeling per Sample (Recommend)
+```bash
+python spectral_ca_preprocessing.py \
+  --inputs ./csvs/run1.csv ./csvs/run2.csv \
+  --outdir ./out \
+  --name my_run \
+  --export-sample-map ./edited_csv.csv
+```
+
+Then:
+--> Manually add into edited_csv.csv (or whatever file name) the amyloid and dye
+--> Save changes
+--> Run same script again but with argument --sample-map as follows:
+
+```bash
+python spectral_ca_preprocessing.py \
+  --inputs ./csvs/run1.csv ./csvs/run2.csv \
+  --outdir ./out \
+  --name my_run \
+  --sample-map ./edited_csv.csv
+```
+
 
 ### C) Skip plot generation (Excel only)
 
@@ -226,7 +222,7 @@ python spectral_ca_preprocessing.py \
 
 ---
 
-## 4) Command-line arguments (full reference)
+### 3) Command-line arguments (full reference)
 
 ### Input selection
 - `--inputs <file1.csv file2.csv ...>`  
@@ -248,24 +244,24 @@ python spectral_ca_preprocessing.py \
 
 ### Plotting
 - `--no-plots`  
-  If set, the script will not generate PNG plots.
+  If set, the script will not generate PNG sawtooth plots (takes a while to render).
 
 ### Header renaming (optional / advanced)
 - `--unique-names`  
   Used for “cleaned wide CSV export” mode: embed excitation into renamed channel headers (e.g., `488ex_508-A`) so that wavelengths shared across laser families don’t collide.
-
-> Note: cleaned-wide CSV export is currently “wired up” in helper functions, but the call site is commented out (see Section 8).
+  
+> Note: using unique-names is currently set as True by default. This can be changed under the main() function.
 
 ### Sample labeling workflow (recommended)
 - `--export-sample-map <path.(csv|xlsx)>`  
-  Creates a **template** mapping file with columns: `Sample`, `Amyloid`, `Dye`, then exits.
+  Creates a **template** mapping file with columns: `Sample`, `Amyloid`, `Dye`, then exits. This allows you to manually add the amyloid and dye for each sample without worrying about reformatting the sample name to adhere to the "Amyloid-Dye" convention required by the script.
 
 - `--sample-map <path.(csv|xlsx)>`  
   Applies your filled-in mapping file to label samples before plotting and exporting.
 
 ---
 
-## 5) Outputs
+### 4) Outputs
 
 All outputs are written under `--outdir`.
 
@@ -307,23 +303,7 @@ Each dye gets:
 
 ---
 
-## 6) How normalization works (and why it matters)
-
-The script computes:
-
-### `Intensity_norm`
-For each group `(Amyloid, Dye, Excitation_nm)`, intensities are divided by the **maximum intensity** in that group:
-
-- If max ≤ 0 or missing → the normalized curve becomes all zeros.
-- This makes each excitation curve comparable in shape (not absolute intensity).
-
-This normalized value is exported to Excel and is used by the “normalized” plot variants.
-
-> This is **not** row-wise normalization to [0, 1] across all wavelengths — it’s **per excitation curve** normalization.
-
----
-
-## 7) Sample map workflow (highly recommended)
+### 5) Sample map workflow (highly recommended)
 
 If your sample naming is inconsistent, or if you want to control grouping/labels exactly, use a sample map.
 
@@ -332,7 +312,7 @@ If your sample naming is inconsistent, or if you want to control grouping/labels
 python spectral_ca_preprocessing.py \
   --input-folder ./csvs \
   --outdir ./out \
-  --export-sample-map ./out/sample_map.xlsx
+  --export-sample-map ./out/sample_map.csv
 ```
 
 This creates a file with columns:
@@ -344,7 +324,7 @@ This creates a file with columns:
 Open `sample_map.xlsx` and fill `Amyloid` and `Dye` for each `Sample`.
 
 Rules:
-- Leave cells blank if you do **not** want to override the auto-parsed label.
+- Leave cells blank if you do **not** want to override the auto-parsed label (when sample name is already in `Amyloid-Dye` format).
 - You may assign multiple Samples to the same Amyloid/Dye to group replicates.
 - Don’t rename the headers: the script requires `Sample`, `Amyloid`, `Dye`.
 
@@ -353,7 +333,7 @@ Rules:
 python spectral_ca_preprocessing.py \
   --input-folder ./csvs \
   --outdir ./out \
-  --sample-map ./out/sample_map.xlsx
+  --sample-map ./out/sample_map.csv
 ```
 
 The merge behavior is:
@@ -364,7 +344,7 @@ The merge behavior is:
 
 ---
 
-## 8) Optional: exporting “cleaned wide CSVs” (advanced)
+### 6) Optional: exporting “cleaned wide CSVs” (advanced)
 
 The script includes helper functions to export a “cleaned wide CSV” where channel headers are renamed to emission wavelength and an optional first row lists excitation wavelengths.
 
@@ -385,23 +365,14 @@ If you rename headers to just the emission wavelength (e.g. `508-A`), you may ge
 - With unique names: `488ex_508-A`, `405ex_508-A`, etc. → unique
 
 ---
+### 8) Run PCA/UMAP/QDA Analysis
+script: spectral_analysis.py
 
-## 9) Changing emission wavelength definitions (center vs start)
+```bash
+python spectral_ca_preprocessing.py ./out/combined_samples_tidy_norm.xlsx
+```
 
-The script currently uses the **center wavelength dictionary** (`CHANNEL_NM`) to assign the plotted/exported emission wavelength values.
-
-If you want to use **start wavelengths** instead, you can:
-
-1) Switch the lookup table in `extract_channel_info()` and `rename_wide_columns_with_excitation()` from `CHANNEL_NM` to `CHANNEL_TO_START_NM`.
-2) Regenerate outputs and compare sawtooth density/shape.
-
-Practical advice:
-- **Center wavelengths** are often better for comparing “where” the signal sits (more intuitive x-axis).
-- **Start wavelengths** can be useful if you want to represent the actual bin edges and squeeze in more distinct x-positions when bins overlap.
-
----
-
-## 10) Troubleshooting / common issues
+### 8) Troubleshooting / common issues
 
 ### “No channel columns found (no UV/V/B/YG/R tokens detected).”
 This means your CSV headers did not match the expected token pattern (e.g., `UV1-A`).
