@@ -1,5 +1,26 @@
 # EMBER Dyes Amyloid Discrimination Analysis
 
+## Contents
+
+- [Overview](#overview)
+- [Installation](#installation)
+- [Step-by-Step Usage for SONY ID7000 Data](#step-by-step-usage-for-sony-id7000-data)
+  - [Step 1 — Process Raw SONY ID7000 Spectral CSVs](#step-1--process-raw-sony-id7000-spectral-csvs)
+  - [Step 2 — Preprocess, Normalize Spectra, and Plot Sawtooth Curves](#step-2--preprocess-normalize-spectra-and-plot-sawtooth-curves)
+  - [Step 3 — Perform PCA, UMAP, and QDA Analysis](#step-3--perform-pca-umap-and-qda-analysis)
+- [Notes and Best Practices](#notes-and-best-practices)
+- [Step-by-Step Usage for Cytek Aurora Data](#step-by-step-usage-for-cytek-aurora-data)
+  - [Step 1 — Process Raw Cytek Aurora Spectral CSVs Exported from FloJo11](#step-1--process-raw-cytek-aurora-spectral-csvs-exported-from-flojo11)
+  - [What the script expects as input](#1-what-the-script-expects-as-input)
+  - [Quickstart](#2-quickstart)
+  - [Command-line arguments (full reference)](#3-command-line-arguments-full-reference)
+  - [Outputs](#4-outputs)
+  - [Sample map workflow (highly recommended)](#5-sample-map-workflow-highly-recommended)
+  - [Optional: exporting “cleaned wide CSVs” (advanced)](#6-optional-exporting-cleaned-wide-csvs-advanced)
+  - [Run PCA/UMAP/QDA Analysis](#8-run-pcaumapqda-analysis)
+  - [Troubleshooting / common issues](#8-troubleshooting--common-issues)
+
+
 ## 🌟 Overview
 
 This repository contains a complete Python pipeline for **processing fluorescence spectral data** from amyloid–binding dye experiments.  
